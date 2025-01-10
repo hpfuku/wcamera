@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <title>Tesseract.js + getUserMediaサンプル</title>
+    <style>
+        video,
+        canvas {
+            max-width: 100%;
+            border: 1px solid #ccc;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title></title>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+        integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+</head>
+
+<body>
+    <!-- 照合処理 -->
+    <form action="" method="get">
+        <input type="file" name="upload_file" id="import-excel" />
+        <h2>Result</h2>
+        <div id="result"></div> <!-- -->
+    </form>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+        integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.11.1/xlsx.full.min.js"></script>
+    <script src="script_20250109.js"></script>
+
+
+    <h1>ブラウザ上でカメラ映像からOCR</h1>
+
+    <!-- カメラ映像表示用 -->
+    <video id="video" autoplay playsinline></video>
+    <br>
+    <!-- 撮影ボタン -->
+    <button id="captureBtn">Capture Photo</button>
+    <br>
+
+    <!-- インアウトカメラ切り替えボタン 
+    <button id="captureBtn">Capture Photo</button>
+    <br>
+    -->
+
+    <!-- 正誤表示 -->
+    <br>
+    <h3 id="seigo">ここに正誤表示されます</h3>
+    <br>
+
+    <!-- キャプチャした写真を表示する -->
+    <canvas id="canvas"></canvas>
+    <div id="output" style="white-space: pre-wrap;"></div>
+
+    <script>
+        const video = document.getElementById('video');
+        const captureBtn = document.getElementById('captureBtn');
+        const canvas = document.getElementById('canvas');
+        const output = document.getElementById('output');
+        var text = "";
+
+        // --- 1) カメラストリームを取得 ---
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    // インカメ or アウトカメラを選ぶ場合は { facingMode: "environment" } などを指定
+                    video: { facingMode: "environment" },
+                    audio: false
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                console.error('カメラの取得に失敗しました:', err);
+            }
+        }
+
+        // --- 2) シャッター(Capture)を切る処理 ---
+        captureBtn.addEventListener('click', () => {
+            // canvasのサイズをvideo要素と同じに
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            // video映像をcanvasに描画
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // --- 3) Tesseract.jsでOCRを実行 ---
+            // canvas -> DataURL 変換
+            const dataUrl = canvas.toDataURL('image/png');
+            Tesseract.recognize(dataUrl, 'jpn', {
+                logger: m => console.log(m),
+            }).then(({ data: { text } }) => { //読み込みデータ
+                output.textContent = text;
+
+                var s = document.getElementById("seigo");
+                var html = "";
+                const recognizedName = text.replace(/\s/g, "");  //o1
+
+                for (var i = 0; i < r.length; i++) {
+                    if (recognizedName.includes(r[i].replace(/\s/g, ""))) {
+                        html += r[i] + " ";
+                        if (!((i + 1) % 3)) {
+                            html += ".Correct!" + "\n";  // ここで改行コードを入れる
+                        }
+                    }
+                }
+
+                // 【方法1】CSSで改行を反映 (seigo要素に "white-space: pre-wrap" を適用)
+                // 【方法2】<br>タグに置き換えたいなら
+                s.innerHTML = html.replace(/\r?\n/g, '<br>');
+            });
+        });
+
+        // ページ読み込み時にカメラ起動
+        initCamera();
+    </script>
+</body>
+
+</html>
